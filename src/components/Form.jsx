@@ -5,6 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { toast } from "sonner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import {
@@ -35,47 +36,43 @@ export function NewForm() {
     resolver: zodResolver(formSchema),
     defaultValues: { confession: "" },
   });
+  const { isSubmitting } = form.formState;
 
-  function calculatePenance(confession) {
-    const sins = ["lie", "steal", "cheat", "skip", "snooze"];
-    let sinScore = 0;
+  async function onSubmit(values) {
+    const loadingToast = toast.loading("Confession is being sent… 🙏");
 
-    sins.forEach((word) => {
-      if (confession.toLowerCase().includes(word)) sinScore += 10;
-    });
+    try {
+      const res = await fetch(`/api/f15946a6-8d8d-4176-a0c6-1bdddddd6933`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
 
-    let penance = "";
-    let priestMsg = "";
+      toast.dismiss(loadingToast);
 
-    if (sinScore >= 30) {
-      penance = "Recite 10 Hail Marys and meditate in silence for 5 minutes.";
-      priestMsg = "My child, the weight of your deeds is heavy. Repent!";
-    } else if (sinScore >= 15) {
-      penance =
-        "Say a sincere apology to someone nearby and reflect on your actions.";
-      priestMsg = "Ah… there is temptation in your heart. Tread carefully.";
-    } else {
-      penance =
-        "Offer a small act of kindness today—perhaps smile at a stranger.";
-      priestMsg = "You are lightly burdened. Keep your conscience clear!";
+      if (!res.ok) throw new Error(`Server responded with ${res.status}`);
+
+      let data = [];
+      try {
+        data = await res.json();
+      } catch (err) {
+        console.warn("Response is not valid JSON:", err);
+      }
+
+      const output = data[0]?.output || {};
+
+      setPenanceMessage(output.penanceMessage || "A mystery penance awaits…");
+      setPriestComment(output.priestComment || "Repent, my child!");
+      setDrawerOpen(true);
+
+      toast.success("Confession received by the Lord 😇");
+
+      form.reset();
+    } catch (err) {
+      console.error(err);
+      toast.dismiss(loadingToast);
+      toast.error("The heavens are silent… something went wrong!");
     }
-
-    setPenanceMessage(penance);
-    setPriestComment(priestMsg);
-    setDrawerOpen(true);
-  }
-
-  function onSubmit(values) {
-    calculatePenance(values.confession);
-
-    fetch("https://jsonplaceholder.typicode.com/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(values),
-    })
-      .then((res) => res.json())
-      .then((data) => console.log("Confession received:", data))
-      .catch((err) => console.error("Error posting confession:", err));
   }
 
   return (
@@ -113,6 +110,7 @@ export function NewForm() {
 
             <Button
               type="submit"
+              disabled={isSubmitting}
               className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg shadow-md transition-all"
             >
               Submit
