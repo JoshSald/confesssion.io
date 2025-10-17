@@ -42,7 +42,7 @@ export function NewForm() {
     const loadingToast = toast.loading("Confession is being sent… 🙏");
 
     try {
-      const res = await fetch(`/api/f15946a6-8d8d-4176-a0c6-1bdddddd6933`, {
+      const res = await fetch(import.meta.env.VITE_PUBLIC_WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
